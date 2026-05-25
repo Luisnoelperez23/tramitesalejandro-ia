@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tramitesalejandro-nexogooficial.netlify.app/sitemap.xml
