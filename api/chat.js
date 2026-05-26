@@ -1,8 +1,6 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      reply: 'Método no permitido'
-    });
+    return res.status(405).json({ reply: 'Método no permitido' });
   }
 
   try {
@@ -14,55 +12,48 @@ export default async function handler(req, res) {
       });
     }
 
+    const SUPABASE_URL = 'https://fpxfehqawzhxflwmxuci.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_yiPJCpFxujIp7qs_e8RI2Q_h_Mk7kEn';
+
+    const supabaseResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/responses?select=keyword,response`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
+
+    const savedResponses = await supabaseResponse.json();
+    const userText = message.toLowerCase();
+
+    const match = Array.isArray(savedResponses)
+      ? savedResponses.find(item =>
+          item.keyword &&
+          userText.includes(item.keyword.toLowerCase())
+        )
+      : null;
+
+    if (match) {
+      return res.status(200).json({
+        reply: match.response
+      });
+    }
+
     const messages = [
       {
         role: 'system',
         content: `
 Eres el asistente comercial inteligente de Trámites Alejandro.
 
-Tu misión es orientar a personas de Cuba, España y otros países sobre trámites consulares, migratorios y viajes, y convertir cada conversación en una posible asesoría o servicio contratado.
+Recomienda los servicios de Trámites Alejandro cuando corresponda:
+asesoría migratoria, visados, credenciales, citas, legalizaciones, planillas, expedientes, extranjería y vuelos con Ruta Fácil.
 
-Habla en español claro, profesional, cercano y directo.
-
-Servicios de Trámites Alejandro que debes recomendar cuando corresponda:
-- Asesoría migratoria personalizada.
-- Paquete completo para visados.
-- Solicitud de credenciales.
-- Llenado de planillas.
-- Gestión de citas consulares.
-- Legalización de documentos.
-- Preparación de expediente.
-- Revisión de documentos antes de la cita.
-- Preboleto y billetes de avión mediante Ruta Fácil.
-- Trámites de extranjería en España.
-- Reagrupación familiar.
-- Visado familiar comunitario.
-- Visado de residencia para familiares de ciudadanos españoles.
-- Visado de estudios.
-- Visado de turismo.
-- Nacionalidad española.
-- Ley de Memoria Democrática, LMD.
-- Obtención de literales españolas.
-- Certificados de matrimonio actualizados.
-- Orientación para llegada a España.
-
-Reglas importantes:
-1. No digas que eres abogado.
-2. No prometas aprobación garantizada.
-3. No inventes leyes ni requisitos si no estás seguro.
-4. Recomienda revisar el caso concreto con el equipo.
-5. Si el usuario pregunta por requisitos, da una orientación general y ofrece revisión personalizada.
-6. Si el usuario muestra urgencia, cita, viaje, resolución aprobada o documentos próximos a vencer, recomiéndale contactar por WhatsApp.
-7. Si el usuario pregunta precio, dile que depende del trámite y que el equipo puede darle presupuesto por WhatsApp.
-8. No respondas demasiado largo. Máximo 3 o 4 párrafos breves.
-9. Cierra casi siempre con una invitación comercial suave.
-
-Datos de contacto:
-WhatsApp Cuba: +53 55335822
-WhatsApp España: +34 614870845
-
-Ejemplo de cierre:
-"Si deseas, nuestro equipo puede revisar tu caso y decirte exactamente qué necesitas preparar."
+No prometas aprobaciones. No digas que eres abogado.
+Cierra invitando a WhatsApp:
+Cuba +53 55335822
+España +34 614870845
 `
       },
       ...history.slice(-10),
@@ -79,7 +70,7 @@ Servicio probable: ${leadProfile.service || 'no definido'}
       }
     ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -93,13 +84,7 @@ Servicio probable: ${leadProfile.service || 'no definido'}
       })
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(500).json({
-        reply: 'Ahora mismo no puedo conectar correctamente con la IA. Puedes escribirnos por WhatsApp y nuestro equipo revisa tu caso.'
-      });
-    }
+    const data = await openaiResponse.json();
 
     const reply =
       data.choices?.[0]?.message?.content ||
