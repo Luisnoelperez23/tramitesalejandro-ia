@@ -4,15 +4,61 @@
   <meta charset="UTF-8">
   <title>Panel IA - Trámites Alejandro</title>
   <style>
-    body { font-family: Arial; background:#0f172a; color:white; padding:30px; }
-    .box { max-width:800px; margin:auto; background:#111827; padding:25px; border-radius:18px; }
-    input, textarea { width:100%; padding:14px; margin:10px 0; border-radius:10px; border:none; }
-    textarea { height:160px; }
-    button { background:#22c55e; color:white; padding:14px 22px; border:none; border-radius:10px; cursor:pointer; font-weight:bold; }
-    .item { background:#1f2937; margin-top:15px; padding:15px; border-radius:12px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      padding: 30px;
+    }
+
+    .box {
+      max-width: 850px;
+      margin: auto;
+      background: #111827;
+      padding: 25px;
+      border-radius: 18px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 15px;
+    }
+
+    textarea {
+      height: 170px;
+    }
+
+    button {
+      background: #22c55e;
+      color: white;
+      padding: 14px 22px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .item {
+      background: #1f2937;
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 12px;
+    }
+
+    .item strong {
+      color: #facc15;
+      display: block;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
+
   <div class="box">
     <h1>Entrenar IA - Trámites Alejandro</h1>
 
@@ -20,60 +66,74 @@
     <input id="keyword" placeholder="Ej: visado familiar, legalización, LMD">
 
     <label>Respuesta que debe dar la IA</label>
-    <textarea id="answer" placeholder="Escribe aquí la respuesta exacta..."></textarea>
+    <textarea id="response" placeholder="Escribe aquí la respuesta exacta..."></textarea>
 
-    <button onclick="saveKnowledge()">Guardar respuesta</button>
+    <button onclick="saveResponse()">Guardar respuesta</button>
 
     <h2>Respuestas guardadas</h2>
-    <div id="list"></div>
+    <div id="savedResponses"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
   <script>
-    function getKnowledge() {
-      return JSON.parse(localStorage.getItem('ta_knowledge') || '[]');
-    }
+    const SUPABASE_URL = 'https://fpxfehqawzhxflwmxuci.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_yiPJCpFxujIp7qs_e8RI2Q_h_Mk7kEn';
 
-    function saveKnowledge() {
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function saveResponse() {
       const keyword = document.getElementById('keyword').value.trim();
-      const answer = document.getElementById('answer').value.trim();
+      const response = document.getElementById('response').value.trim();
 
-      if (!keyword || !answer) {
+      if (!keyword || !response) {
         alert('Debes poner palabra clave y respuesta.');
         return;
       }
 
-      const knowledge = getKnowledge();
-      knowledge.push({ keyword, answer });
-      localStorage.setItem('ta_knowledge', JSON.stringify(knowledge));
+      const { error } = await supabaseClient
+        .from('responses')
+        .insert([{ keyword, response }]);
+
+      if (error) {
+        console.error(error);
+        alert('Error guardando la respuesta.');
+        return;
+      }
+
+      alert('Respuesta guardada correctamente.');
 
       document.getElementById('keyword').value = '';
-      document.getElementById('answer').value = '';
+      document.getElementById('response').value = '';
 
-      renderKnowledge();
-      alert('Respuesta guardada.');
+      loadResponses();
     }
 
-    function deleteKnowledge(index) {
-      const knowledge = getKnowledge();
-      knowledge.splice(index, 1);
-      localStorage.setItem('ta_knowledge', JSON.stringify(knowledge));
-      renderKnowledge();
+    async function loadResponses() {
+      const { data, error } = await supabaseClient
+        .from('responses')
+        .select('*');
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      const container = document.getElementById('savedResponses');
+      container.innerHTML = '';
+
+      data.forEach(item => {
+        container.innerHTML += `
+          <div class="item">
+            <strong>${item.keyword}</strong>
+            <p>${item.response}</p>
+          </div>
+        `;
+      });
     }
 
-    function renderKnowledge() {
-      const list = document.getElementById('list');
-      const knowledge = getKnowledge();
-
-      list.innerHTML = knowledge.map((item, index) => `
-        <div class="item">
-          <strong>${item.keyword}</strong>
-          <p>${item.answer}</p>
-          <button onclick="deleteKnowledge(${index})">Eliminar</button>
-        </div>
-      `).join('');
-    }
-
-    renderKnowledge();
+    loadResponses();
   </script>
+
 </body>
 </html>
