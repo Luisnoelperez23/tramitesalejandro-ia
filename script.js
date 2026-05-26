@@ -73,10 +73,16 @@ async function sendAIMessage() {
   const typing = addTypingIndicator();
 
   try {
-    const response = await fetch('/.netlify/functions/chat', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: aiHistory, leadProfile })
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message,
+        history: aiHistory,
+        leadProfile
+      })
     });
 
     const data = await response.json();
@@ -86,8 +92,9 @@ async function sendAIMessage() {
     aiHistory.push({ role: 'user', content: message });
     aiHistory.push({ role: 'assistant', content: reply });
     aiHistory = aiHistory.slice(-12);
+
   } catch (error) {
-    typeResponse(typing, 'Ahora mismo no puedo conectar con la IA. Revisa que OPENAI_API_KEY esté guardada en Netlify y que la función esté publicada.');
+    typeResponse(typing, 'Ahora mismo no puedo conectar con la IA.');
   }
 }
 
@@ -101,7 +108,6 @@ function sendWhatsApp() {
   window.open(`https://wa.me/5355335822?text=${text}`, '_blank');
 }
 
-// PRO scroll reveal animations
 document.addEventListener('DOMContentLoaded', () => {
   const revealTargets = document.querySelectorAll(
     'section, .service-card, .agent-grid article, .testimonial-grid article, .trust-grid article, .metrics div, .identity-grid article, .lead-grid article'
