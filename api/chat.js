@@ -1,3 +1,29 @@
+function normalizeText(text = '') {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function findBestMatch(message, savedResponses) {
+  const userText = normalizeText(message);
+
+  if (!Array.isArray(savedResponses)) return null;
+
+  return savedResponses.find(item => {
+    const keyword = normalizeText(item.keyword || '');
+    if (!keyword) return false;
+
+    const keywords = keyword
+      .split(',')
+      .map(k => normalizeText(k))
+      .filter(Boolean);
+
+    return keywords.some(k => userText.includes(k));
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ reply: 'Método no permitido' });
@@ -26,20 +52,16 @@ export default async function handler(req, res) {
     );
 
     const savedResponses = await supabaseResponse.json();
-    const userText = message.toLowerCase();
+    const matched = findBestMatch(message, savedResponses);
 
-    const match = Array.isArray(savedResponses)
-      ? savedResponses.find(item =>
-          item.keyword &&
-          userText.includes(item.keyword.toLowerCase())
-        )
-      : null;
-
-    if (match) {
-      return res.status(200).json({
-        reply: match.response
-      });
-    }
+    const trainedKnowledge = matched
+      ? `
+INFORMACIÓN ENSEÑADA POR TRÁMITES ALEJANDRO:
+Pregunta o palabra clave: ${matched.keyword}
+Respuesta oficial que debes usar como base:
+${matched.response}
+`
+      : '';
 
     const messages = [
       {
@@ -47,13 +69,36 @@ export default async function handler(req, res) {
         content: `
 Eres el asistente comercial inteligente de Trámites Alejandro.
 
-Recomienda los servicios de Trámites Alejandro cuando corresponda:
-asesoría migratoria, visados, credenciales, citas, legalizaciones, planillas, expedientes, extranjería y vuelos con Ruta Fácil.
+Tu prioridad es responder usando la información enseñada por el administrador cuando exista coincidencia.
 
-No prometas aprobaciones. No digas que eres abogado.
-Cierra invitando a WhatsApp:
-Cuba +53 55335822
-España +34 614870845
+Si existe INFORMACIÓN ENSEÑADA POR TRÁMITES ALEJANDRO:
+- Respóndela de forma clara.
+- Puedes mejorar la redacción, pero NO cambies el sentido.
+- No contradigas esa información.
+- Recomienda los servicios de Trámites Alejandro al final.
+
+Servicios:
+- Asesoría migratoria personalizada.
+- Paquete completo de visados.
+- Credenciales.
+- Citas consulares.
+- Legalizaciones.
+- Llenado de planillas.
+- Preparación de expediente.
+- Extranjería en España.
+- Preboleto y billetes con Ruta Fácil.
+
+Reglas:
+- No digas que eres abogado.
+- No prometas aprobaciones.
+- No inventes requisitos.
+- Responde breve y comercial.
+- Cierra invitando a WhatsApp.
+
+WhatsApp Cuba: +53 55335822
+WhatsApp España: +34 614870845
+
+${trainedKnowledge}
 `
       },
       ...history.slice(-10),
@@ -79,8 +124,8 @@ Servicio probable: ${leadProfile.service || 'no definido'}
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages,
-        temperature: 0.6,
-        max_tokens: 350
+        temperature: matched ? 0.2 : 0.6,
+        max_tokens: 400
       })
     });
 
@@ -88,7 +133,7 @@ Servicio probable: ${leadProfile.service || 'no definido'}
 
     const reply =
       data.choices?.[0]?.message?.content ||
-      'No pude responder en este momento. Puedes escribirnos por WhatsApp y revisamos tu caso.';
+      'No pude responder en este momento. Escríbenos por WhatsApp y revisamos tu caso.';
 
     return res.status(200).json({ reply });
 
